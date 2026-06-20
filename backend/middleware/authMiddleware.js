@@ -1,0 +1,41 @@
+const jwt  = require('jsonwebtoken');
+const User = require('../models/User');
+
+// ── protect: checks if user is logged in ─────────────────────
+// Any route that needs login will use this middleware
+const protect = async (req, res, next) => {
+  let token;
+
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith('Bearer')
+  ) {
+    try {
+      token = req.headers.authorization.split(' ')[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = await User.findById(decoded.id).select('-password');
+      return next(); // ✅ add return here
+    } catch (error) {
+      return res.status(401).json({ message: 'Not authorized, token failed' }); // ✅ add return
+    }
+  }
+
+  if (!token) {
+    return res.status(401).json({ message: 'Not authorized, no token' }); // ✅ add return
+  }
+};
+
+// ── authorize: checks if user has the right role ─────────────
+// Usage example: authorize('manager') — only managers can pass
+const authorize = (...roles) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({
+        message: `Role '${req.user.role}' is not allowed to do this`,
+      });
+    }
+    next();
+  };
+};
+
+module.exports = { protect, authorize };
