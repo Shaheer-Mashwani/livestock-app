@@ -18,7 +18,11 @@ const app = express();
 // ── Middleware ────────────────────────────────────────────────
 // CORS: allows our React frontend (on port 3000) to call this API (on port 5000)
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://livestock-app-one.vercel.app',
+  ],
   credentials: true,
 }));
 
