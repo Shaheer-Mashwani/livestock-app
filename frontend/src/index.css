@@ -1,4 +1,4 @@
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@600;700&display=swap');
 
   :root {
     --green-900: #0d3320;
@@ -566,3 +566,124 @@
 /* Vite root reset */
 #root { width: 100%; min-height: 100vh; }
 body { margin: 0; }
+
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVE STYLES — Mobile & Tablet
+   Breakpoints: 1024px (tablet), 768px (mobile landscape), 480px (mobile)
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── TABLET (≤1024px) ── */
+@media (max-width: 1024px) {
+  .container { padding: 20px 16px; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .dash-grid, .dash-grid.cols-3 { grid-template-columns: 1fr; }
+  .form-grid.cols-3 { grid-template-columns: 1fr 1fr; }
+  .checkbox-grid { grid-template-columns: 1fr; }
+  .login-wrap { flex-direction: column; gap: 24px; max-width: 480px; }
+  .login-left { padding: 0; text-align: center; }
+  .login-headline { font-size: 26px; }
+  .login-roles { display: none; } /* hide role list on small screens to save space */
+}
+
+/* ── MOBILE LANDSCAPE / SMALL TABLET (≤768px) ── */
+@media (max-width: 768px) {
+  body { font-size: 13px; }
+
+  /* Nav becomes a compact bar; tabs scroll horizontally if needed */
+  .nav {
+    padding: 0 12px;
+    height: auto;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  .nav-logo-sub { display: none; }
+  .nav-logo-text { font-size: 13px; }
+  .nav-logo-icon { width: 30px; height: 30px; font-size: 16px; }
+  .nav-tabs {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .nav-tab { padding: 0 14px; font-size: 12px; height: 40px; flex-shrink: 0; }
+  .nav-user { margin-left: auto; gap: 6px; }
+  .nav-user span:not(.nav-role-badge) { display: none; } /* hide username text, keep avatar+badge */
+  .nav-logout { padding: 5px 10px; font-size: 11px; margin-left: 6px; }
+
+  /* Page header */
+  .page-header { padding: 18px 16px; }
+  .page-header h1 { font-size: 18px; }
+  .page-header p { font-size: 12px; }
+
+  /* Cards & forms */
+  .container { padding: 16px 12px; }
+  .card-header { padding: 14px 16px 10px; flex-wrap: wrap; }
+  .card-body { padding: 16px; }
+  .form-grid, .form-grid.cols-3 { grid-template-columns: 1fr; gap: 14px; }
+  .form-group.span-2, .form-group.span-3 { grid-column: span 1; }
+
+  /* Stats cards stack 2x2 → still fine, just tighten */
+  .stats-row { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-card { padding: 14px 16px; }
+  .stat-value { font-size: 22px; }
+
+  /* Filter bar wraps and scrolls */
+  .filter-bar { padding: 12px; gap: 8px; }
+  .filter-select { min-width: 110px; font-size: 11px; padding: 6px 24px 6px 10px; }
+  .filter-toggle { font-size: 11px; padding: 6px 10px; }
+  .filter-divider { display: none; }
+  .filter-reset { width: 100%; text-align: right; margin-top: 4px; }
+
+  /* Animal table — allow horizontal scroll instead of squashing */
+  .animal-table { display: block; overflow-x: auto; white-space: nowrap; }
+  .animal-table thead, .animal-table tbody { display: table; width: 100%; }
+
+  /* Data table — horizontal scroll on small screens */
+  .data-table-wrap { overflow-x: auto; }
+  .data-table { min-width: 720px; } /* keeps columns readable, scrolls instead of crushing */
+
+  /* Form action buttons stack and go full width */
+  .form-actions { flex-direction: column-reverse; gap: 8px; }
+  .form-actions .btn { width: 100%; justify-content: center; }
+
+  /* Login card padding */
+  .login-form-wrap { padding: 24px 20px 20px; }
+  .login-header { padding: 16px 16px 0; }
+  .login-body { padding: 16px; }
+
+  /* Checkbox cards */
+  .checkbox-card { padding: 10px 12px; }
+
+  /* Card header export/delete buttons wrap under title on mobile */
+  .card-header .ml-auto { width: 100%; margin-top: 8px; }
+  .card-header .ml-auto .btn { width: 100%; justify-content: center; }
+}
+
+/* ── MOBILE (≤480px) ── */
+@media (max-width: 480px) {
+  .stats-row { grid-template-columns: 1fr; } /* stack stat cards fully */
+  .stat-value { font-size: 20px; }
+
+  .page-header h1 { font-size: 16px; }
+
+  .login-headline { font-size: 22px; }
+  .login-desc { font-size: 13px; }
+
+  .nav-tab { font-size: 11px; padding: 0 10px; }
+
+  .btn { font-size: 12px; padding: 8px 16px; }
+
+  .radio-group { flex-direction: column; }
+  .radio-pill { text-align: center; }
+
+  .machinery-icons { flex-wrap: wrap; }
+
+  /* Pagination footer stacks */
+  .card > div[style*="border-top"] {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 10px;
+  }
+}
