@@ -25,10 +25,10 @@ router.route('/')
 
 // GET    /api/farmers/:id → single record
 // PUT    /api/farmers/:id → update (operator + manager)
-// DELETE /api/farmers/:id → delete (manager only)
+// DELETE /api/farmers/:id → delete (operator + manager)
 router.route('/:id')
   .get(protect, getFarmerById)
   .put(protect, authorize('operator', 'manager'), updateFarmer)
-  .delete(protect, authorize('manager'), deleteFarmer);
+  .delete(protect, authorize('operator', 'manager'), deleteFarmer);
 
 module.exports = router;

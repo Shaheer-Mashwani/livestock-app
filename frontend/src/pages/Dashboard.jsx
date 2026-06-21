@@ -3,11 +3,14 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from 'recharts';
-import { getFarmers, getDashboardStats } from '../services/api';
+import toast from 'react-hot-toast';
+import { getFarmers, getDashboardStats, deleteFarmer } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const COLORS = ['#2e8b57', '#6dbf8a', '#c8922a', '#b0b8cc', '#2563eb', '#8b5cf6'];
 
 const Dashboard = () => {
+  const { canEdit } = useAuth(); // true for operator/manager, false for viewer
   const [stats, setStats]     = useState(null);
   const [farmers, setFarmers] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
@@ -27,10 +30,8 @@ const Dashboard = () => {
     getDashboardStats().then(({ data }) => setStats(data)).catch(console.error);
   }, []);
 
-  // ── Fetch farmer list whenever filters change ────────────────
-  useEffect(() => {
-    setLoading(true);
-    // Build params — only send filters that are actually active
+  // ── Build query params from current filters ──────────────────
+  const buildParams = () => {
     const params = { page: filters.page, limit: 8 };
     if (filters.district)       params.district = filters.district;
     if (filters.educationLevel) params.educationLevel = filters.educationLevel;
@@ -42,8 +43,13 @@ const Dashboard = () => {
     if (filters.chopper)        params.chopper = true;
     if (filters.milkChiller)    params.milkChiller = true;
     if (filters.milkingMachine) params.milkingMachine = true;
+    return params;
+  };
 
-    getFarmers(params)
+  // ── Fetch farmer list whenever filters change ────────────────
+  useEffect(() => {
+    setLoading(true);
+    getFarmers(buildParams())
       .then(({ data }) => {
         setFarmers(data.farmers);
         setPagination(data.pagination);
@@ -51,6 +57,103 @@ const Dashboard = () => {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [filters]);
+
+  // ── Refresh stats + table together (used after delete) ───────
+  const refreshAll = () => {
+    getDashboardStats().then(({ data }) => setStats(data)).catch(console.error);
+    getFarmers(buildParams())
+      .then(({ data }) => {
+        setFarmers(data.farmers);
+        setPagination(data.pagination);
+      })
+      .catch(console.error);
+  };
+
+  // ── Delete a farmer record ────────────────────────────────────
+  const handleDelete = async (id, name) => {
+    // Confirm before deleting — irreversible action
+    const sure = window.confirm(`Delete record for "${name}"? This cannot be undone.`);
+    if (!sure) return;
+
+    try {
+      await deleteFarmer(id);
+      toast.success('✅ Record deleted');
+      refreshAll(); // reload table + stats so numbers stay accurate
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Delete failed');
+    }
+  };
+
+  // ── Export ALL matching records (not just current page) to CSV ─
+  const handleExportClick = async () => {
+    try {
+      toast.loading('Preparing export...', { id: 'export' });
+      // Re-fetch with a high limit so we get every matching record, not just this page
+      const params = { ...buildParams(), page: 1, limit: 10000 };
+      const { data } = await getFarmers(params);
+      exportToCSV(data.farmers);
+      toast.dismiss('export');
+    } catch (err) {
+      toast.dismiss('export');
+      toast.error('Export failed');
+    }
+  };
+
+  // ── Convert farmer records into a downloadable CSV file ────────
+  const exportToCSV = (data) => {
+    if (!data || data.length === 0) {
+      toast.error('No records to export');
+      return;
+    }
+
+    // Define column headers — order matters, matches the row mapping below
+    const headers = [
+      'Serial Number', 'Full Name', 'Father/Husband Name', 'CNIC', 'Contact No.',
+      'District', 'Education Level', 'Gender', 'Total Animals', 'Daily Milk (L)',
+      'Farm Area', 'Farm Area Unit', 'Solar', 'Chopper', 'Milk Chiller', 'Milking Machine',
+    ];
+
+    // Helper: wrap a value in quotes and escape internal quotes (CSV safety)
+    const escapeCSV = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+
+    // Build one row of CSV text per farmer
+    const rows = data.map((f) => [
+      f.serialNumber,
+      f.fullName,
+      f.fatherHusbandName,
+      f.cnic,
+      f.contactNo1,
+      f.district,
+      f.educationLevel,
+      f.gender,
+      f.livestock?.totalAnimals,
+      f.livestock?.totalDailyMilk,
+      f.farm?.area,
+      f.farm?.areaUnit,
+      f.machinery?.solar ? 'Yes' : 'No',
+      f.machinery?.chopper ? 'Yes' : 'No',
+      f.machinery?.milkChiller ? 'Yes' : 'No',
+      f.machinery?.milkingMachine ? 'Yes' : 'No',
+    ].map(escapeCSV).join(','));
+
+    // Combine headers + rows into final CSV text
+    const csvContent = [headers.map(escapeCSV).join(','), ...rows].join('\n');
+
+    // Create a downloadable file using a Blob (in-memory file)
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+
+    // Create a temporary link element and click it to trigger download
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `farmer-records-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success(`✅ Exported ${data.length} records`);
+  };
 
   // Helper to update one filter field and reset to page 1
   const updateFilter = (key, value) =>
@@ -283,6 +386,12 @@ const Dashboard = () => {
           <div className="card-header">
             <div className="card-header-icon green">📋</div>
             <div><h2>Farmer Records</h2><p>Filtered list of registered farmers</p></div>
+            <div className="ml-auto">
+              <button className="btn btn-secondary" style={{ padding: '7px 14px', fontSize: 12 }}
+                onClick={handleExportClick}>
+                ⬇️ Export CSV
+              </button>
+            </div>
           </div>
           <div className="data-table-wrap">
             <table className="data-table">
@@ -290,13 +399,14 @@ const Dashboard = () => {
                 <tr>
                   <th>Serial</th><th>Name</th><th>District</th><th>Education</th>
                   <th>Animals</th><th>Milk/Day (L)</th><th>Farm Area</th><th>Machinery</th>
+                  {canEdit && <th>Action</th>}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={8} style={{ textAlign: 'center', padding: 24 }}>Loading...</td></tr>
+                  <tr><td colSpan={canEdit ? 9 : 8} style={{ textAlign: 'center', padding: 24 }}>Loading...</td></tr>
                 ) : farmers.length === 0 ? (
-                  <tr><td colSpan={8} style={{ textAlign: 'center', padding: 24 }}>No records found</td></tr>
+                  <tr><td colSpan={canEdit ? 9 : 8} style={{ textAlign: 'center', padding: 24 }}>No records found</td></tr>
                 ) : farmers.map((f) => (
                   <tr key={f._id}>
                     <td style={{ color: 'var(--slate-400)', fontSize: 12 }}>{f.serialNumber}</td>
@@ -317,6 +427,17 @@ const Dashboard = () => {
                         <div className={`mach-dot ${f.machinery?.milkingMachine ? 'mach-on' : 'mach-off'}`}>🥛</div>
                       </div>
                     </td>
+                    {canEdit && (
+                      <td>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ padding: '5px 10px', fontSize: 11, color: '#dc3545' }}
+                          onClick={() => handleDelete(f._id, f.fullName)}
+                        >
+                          🗑️ Delete
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
